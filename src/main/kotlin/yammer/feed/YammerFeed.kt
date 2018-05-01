@@ -12,9 +12,8 @@ import java.util.concurrent.TimeUnit
  * I will poll supplied Yammer feed and push new posts to Slack.
  */
 
-var didUpdate = HashSet<Long>()
-var firstRun = true
-var runWithError = false
+var messageThreadsPostedToSlack = HashSet<Long>()
+var firstRun = false
 
 fun main(args: Array<String>) {
     val yammerFeedConfig = yammerFeedConfig()
@@ -37,11 +36,7 @@ private fun yammerFeedConfig(): YammerFeedConfig {
 }
 
 
-fun getYammerStatus(yammerFeedConfig: YammerFeedConfig): Boolean {
-
-    if(runWithError) {
-        return false // TODO: Should cancel the execution.
-    }
+fun getYammerStatus(yammerFeedConfig: YammerFeedConfig) {
 
     val soup = Jsoup.connect(yammerFeedConfig.yammerMessageSource)
             .cookie("oauth_token", yammerFeedConfig.yammerOAuthToken)
@@ -51,8 +46,7 @@ fun getYammerStatus(yammerFeedConfig: YammerFeedConfig): Boolean {
 
     if (soup.statusCode() != 200) {
         postStatusToSlack(yammerFeedConfig.slackWebHook, "Failed to fetch data from Yammer. Status was ${soup.statusCode()}.")
-        runWithError = true
-        return false
+        System.exit(soup.statusCode())
     }
 
     val datastruktur = JSONValue.parse(soup.body()) as JSONObject
@@ -64,7 +58,7 @@ fun getYammerStatus(yammerFeedConfig: YammerFeedConfig): Boolean {
     val iterator = messagesMap.iterator()
     while (iterator.hasNext()) {
         val message = iterator.next().value
-        if (didUpdate.add(message.threadId)) {
+        if (messageThreadsPostedToSlack.add(message.threadId)) {
             val user = userReferenceMap[message.senderId]
             val group = groupReferenceMap[message.groupId]
             if (firstRun) {
@@ -79,5 +73,4 @@ fun getYammerStatus(yammerFeedConfig: YammerFeedConfig): Boolean {
     if (firstRun) {
         firstRun = false
     }
-    return true
 }
