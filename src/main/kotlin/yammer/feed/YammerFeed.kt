@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
  */
 
 var messageThreadsPostedToSlack = HashSet<Long>()
-var firstRun = false
+var firstRun = true
 
 fun main(args: Array<String>) {
     val yammerFeedConfig = yammerFeedConfig()
